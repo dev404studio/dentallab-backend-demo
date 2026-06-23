@@ -1,6 +1,7 @@
 const Staff = require("../models/Staff");
+const Tenant = require("../models/Tenant");
 const jwt = require("jsonwebtoken");
-const { resolveAppRoleFromStaff } = require("../utils/roleResolver");
+const { resolveAppRoleFromStaff, APP_ROLES } = require("../utils/roleResolver");
 
 // 🔑 Tạo JWT
 const generateToken = (staff) => {
@@ -13,6 +14,8 @@ const generateToken = (staff) => {
       HoTenNV: staff.HoTenNV,
       Email: staff.Email,
       appRole,
+      tenantId: staff.tenantId || null,
+      isSuperAdmin: staff.isSuperAdmin || false,
     },
     process.env.JWT_SECRET,
     {
@@ -71,6 +74,27 @@ exports.loginStaff = async (req, res) => {
     const isMatch = await staff.comparePassword(Password);
     if (!isMatch) return res.status(400).json({ message: "Sai mật khẩu" });
 
+    // Kiểm tra trạng thái dùng thử của tenant (trư super admin)
+    if (staff.tenantId && !staff.isSuperAdmin) {
+      const tenant = await Tenant.findById(staff.tenantId).lean();
+      if (!tenant) {
+        return res.status(403).json({ message: "Tenant không tồn tại" });
+      }
+      if (tenant.status === "suspended") {
+        return res.status(403).json({ message: "Tài khoản đã bị khóa" });
+      }
+      if (tenant.status === "expired" || (tenant.status === "trial" && new Date() > tenant.trialEndDate)) {
+        if (tenant.status !== "expired") {
+          Tenant.findByIdAndUpdate(staff.tenantId, { status: "expired" }).exec();
+        }
+        return res.status(402).json({
+          message: "Thời gian dùng thử đã hết hạn",
+          trialEndDate: tenant.trialEndDate,
+          code: "TRIAL_EXPIRED",
+        });
+      }
+    }
+
     const token = generateToken(staff);
 
     res.json({
@@ -88,6 +112,8 @@ exports.loginStaff = async (req, res) => {
         DiaChi: staff.DiaChi,
         GioiThieu: staff.GioiThieu,
         Status: staff.Status, // Bắt buộc phải có để Sidebar không bị lỗi ẩn menu
+        appRole: resolveAppRoleFromStaff(staff),
+        isSuperAdmin: staff.isSuperAdmin || false,
       },
     });
   } catch (err) {
@@ -130,9 +156,9 @@ exports.createStaff = async (req, res) => {
       return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
-    // Kiểm tra MSNV nếu cung cấp
+    // Kiểm tra MSNV nếu cung cấp (unique per tenant)
     if (MSNV) {
-      const msNvExist = await Staff.findOne({ MSNV });
+      const msNvExist = await Staff.findOne({ MSNV, tenantId: req.tenantId });
       if (msNvExist) {
         return res.status(400).json({ message: "Mã số nhân viên đã tồn tại" });
       }
@@ -145,6 +171,7 @@ exports.createStaff = async (req, res) => {
       Email: Email.toLowerCase(),
       Password,
       quyenSuDung,
+      tenantId: req.tenantId,
       DienThoai: DienThoai || "",
       DiaChi: DiaChi || "",
       GioiThieu: GioiThieu || "",
@@ -181,7 +208,7 @@ exports.createStaff = async (req, res) => {
 // 📋 Lấy danh sách nhân viên
 exports.getAllStaff = async (req, res) => {
   try {
-    const staffs = await Staff.find().select("-Password").populate("quyenSuDung");
+    const staffs = await Staff.find({ tenantId: req.tenantId }).select("-Password").populate("quyenSuDung");
     res.json(staffs);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -191,7 +218,7 @@ exports.getAllStaff = async (req, res) => {
 // 🔍 Lấy 1 nhân viên
 exports.getStaffById = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id).select("-Password").populate("quyenSuDung");
+    const staff = await Staff.findOne({ _id: req.params.id, tenantId: req.tenantId }).select("-Password").populate("quyenSuDung");
     if (!staff) {
       return res.status(404).json({ message: "Không tìm thấy" });
     }
@@ -204,7 +231,7 @@ exports.getStaffById = async (req, res) => {
 // ✏️ Cập nhật nhân viên
 exports.updateStaff = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id);
+    const staff = await Staff.findOne({ _id: req.params.id, tenantId: req.tenantId });
 
     if (!staff) {
       return res.status(404).json({ message: "Không tìm thấy" });
@@ -228,10 +255,11 @@ exports.updateStaff = async (req, res) => {
       req.body.Email = req.body.Email.toLowerCase();
     }
 
-    // Nếu cập nhật MSNV, kiểm tra tính hợp lệ
+    // Nếu cập nhật MSNV, kiểm tra unique per tenant
     if (req.body.MSNV && req.body.MSNV !== staff.MSNV) {
       const msNvExist = await Staff.findOne({
         MSNV: req.body.MSNV,
+        tenantId: req.tenantId,
         _id: { $ne: req.params.id }
       });
       if (msNvExist) {
@@ -284,7 +312,7 @@ exports.updateStaff = async (req, res) => {
 // ❌ Xóa nhân viên
 exports.deleteStaff = async (req, res) => {
   try {
-    await Staff.findByIdAndDelete(req.params.id);
+    await Staff.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
     res.json({ message: "Xóa thành công" });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const benhNhanSchema = new mongoose.Schema(
   {
@@ -23,5 +24,7 @@ const benhNhanSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+benhNhanSchema.plugin(tenantPlugin);
 
 module.exports = mongoose.model("BenhNhan", benhNhanSchema);

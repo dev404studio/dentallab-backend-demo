@@ -1,8 +1,10 @@
 const jwt = require("jsonwebtoken");
 const Staff = require("../models/Staff");
+const Tenant = require("../models/Tenant");
 const { APP_ROLES, resolveAppRoleFromStaff } = require("../utils/roleResolver");
+const { runWithTenant } = require("../utils/tenantContext");
 
-exports.verifyToken = (req, res, next) => {
+exports.verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -18,7 +20,43 @@ exports.verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-    next(); // ✅ QUAN TRỌNG
+
+    // Super Admin: không có tenantId, bỏ qua kiểm tra trial
+    if (decoded.isSuperAdmin) {
+      return next();
+    }
+
+    // Kiểm tra trạng thái dùng thử của tenant
+    if (decoded.tenantId) {
+      const tenant = await Tenant.findById(decoded.tenantId).lean();
+
+      if (!tenant) {
+        return res.status(403).json({ message: "Tenant không tồn tại" });
+      }
+
+      if (tenant.status === "suspended") {
+        return res.status(403).json({ message: "Tài khoản đã bị khóa" });
+      }
+
+      if (tenant.status === "expired" || (tenant.status === "trial" && new Date() > tenant.trialEndDate)) {
+        // Tự động cập nhật trạng thái expired
+        if (tenant.status !== "expired") {
+          Tenant.findByIdAndUpdate(decoded.tenantId, { status: "expired" }).exec();
+        }
+        return res.status(402).json({
+          message: "Thời gian dùng thử đã hết hạn",
+          trialEndDate: tenant.trialEndDate,
+          code: "TRIAL_EXPIRED",
+        });
+      }
+
+      req.tenantId = decoded.tenantId;
+      // Chạy toàn bộ request chain trong tenant context
+      return runWithTenant(decoded.tenantId, next);
+    }
+
+    // Không có tenantId và không phải super admin → tài khoản lỗi
+    return res.status(403).json({ message: "Tài khoản không thuộc tenant nào" });
   } catch (err) {
     return res.status(403).json({ message: "Token không hợp lệ" });
   }
@@ -43,6 +81,11 @@ exports.authorizeRoles = (...allowedRoles) => {
 
       const appRole = resolveAppRoleFromStaff(staff);
       req.user.appRole = appRole;
+
+      // 0. Super Admin luôn được phép
+      if (appRole === APP_ROLES.SUPER_ADMIN) {
+        return next();
+      }
 
       // 1. Nếu là Admin thì luôn luôn được phép truy cập
       if (appRole === APP_ROLES.ADMIN) {

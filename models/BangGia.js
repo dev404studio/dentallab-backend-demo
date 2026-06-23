@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const bangGiaSchema = new mongoose.Schema(
   {
@@ -29,9 +30,10 @@ const bangGiaSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🚀 đảm bảo 1 sản phẩm chỉ có 1 giá riêng / 1 nha khoa
+bangGiaSchema.plugin(tenantPlugin);
+// 1 sản phẩm chỉ có 1 giá riêng / 1 nha khoa trong từng tenant
 bangGiaSchema.index(
-  { nhaKhoaId: 1, sanPhamId: 1 },
+  { tenantId: 1, nhaKhoaId: 1, sanPhamId: 1 },
   { unique: true }
 );
 

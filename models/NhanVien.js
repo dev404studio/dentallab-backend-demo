@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const nhanVienSchema = new mongoose.Schema(
   {
@@ -10,7 +11,7 @@ const nhanVienSchema = new mongoose.Schema(
     cccd: {
       type: String,
       required: true,
-      unique: true,
+      // Bỏ unique toàn cục, dùng compound per-tenant bên dưới
     },
 
     diaChi: String,
@@ -53,5 +54,9 @@ const nhanVienSchema = new mongoose.Schema(
   }
   // Bạn có thể bỏ { timestamps: true } đi nếu không cần dùng đến thuộc tính updatedAt mặc định của Mongoose
 );
+
+nhanVienSchema.plugin(tenantPlugin);
+// CCCD unique trong từng tenant
+nhanVienSchema.index({ tenantId: 1, cccd: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model("NhanVien", nhanVienSchema);

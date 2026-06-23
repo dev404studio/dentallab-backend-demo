@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const sanPhamSchema = new mongoose.Schema(
     {
@@ -79,5 +80,7 @@ const sanPhamSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+sanPhamSchema.plugin(tenantPlugin);
 
 module.exports = mongoose.model("SanPham", sanPhamSchema);

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const bangLuongSchema = new mongoose.Schema(
   {
@@ -20,7 +21,7 @@ const bangLuongSchema = new mongoose.Schema(
 
     luongCanBan: Number,
 
-    ngayCongThang: Number,   
+    ngayCongThang: Number,
 
     luongMotNgay: Number,
 
@@ -66,5 +67,7 @@ const bangLuongSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+bangLuongSchema.plugin(tenantPlugin);
 
 module.exports = mongoose.model("BangLuong", bangLuongSchema);

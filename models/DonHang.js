@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const donHangSchema = new mongoose.Schema(
     {
@@ -18,7 +19,7 @@ const donHangSchema = new mongoose.Schema(
         },
         maDonHang: {
             type: String,
-            unique: true,
+            // Bỏ unique toàn cục, dùng compound per-tenant bên dưới
             index: true,
             trim: true,
             sparse: true,
@@ -151,5 +152,9 @@ const donHangSchema = new mongoose.Schema(
 
 // Thêm dòng này để tăng tốc độ truy vấn theo ngày tháng và trạng thái
 donHangSchema.index({ createdAt: -1, trangThai: 1 });
+
+donHangSchema.plugin(tenantPlugin);
+// Mã đơn hàng unique trong từng tenant
+donHangSchema.index({ tenantId: 1, maDonHang: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model("DonHang", donHangSchema);

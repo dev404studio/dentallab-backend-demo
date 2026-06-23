@@ -1,19 +1,20 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const truongSchema = new mongoose.Schema({
   loaiTruong: {
     type: String,
     enum: [
-        "maThe", 
-        "nhaKhoa", 
-        "bacSi", 
-        "benhNhan", 
-        "sanPham", 
-        "viTriRang", 
-        "baoHanhTu", 
-        "baoHanhDen", 
-        "maQR"
-      ],
+      "maThe",
+      "nhaKhoa",
+      "bacSi",
+      "benhNhan",
+      "sanPham",
+      "viTriRang",
+      "baoHanhTu",
+      "baoHanhDen",
+      "maQR"
+    ],
     required: true,
   },
   leTrai: { type: Number, default: 0 }, // mm
@@ -48,5 +49,7 @@ const mauTheBaoHanhSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+mauTheBaoHanhSchema.plugin(tenantPlugin);
 
 module.exports = mongoose.model("MauTheBaoHanh", mauTheBaoHanhSchema);

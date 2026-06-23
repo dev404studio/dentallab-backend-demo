@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const hoaDonSchema = new mongoose.Schema(
   {
     soHoaDon: {
       type: String,
-      unique: true,
+      // Bỏ unique toàn cục, dùng compound per-tenant bên dưới
     },
     nhaKhoa: {
       type: mongoose.Schema.Types.ObjectId,
@@ -151,5 +152,9 @@ hoaDonSchema.pre("save", function () {
     }
   }
 });
+
+hoaDonSchema.plugin(tenantPlugin);
+// Số hóa đơn unique trong từng tenant
+hoaDonSchema.index({ tenantId: 1, soHoaDon: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model("HoaDon", hoaDonSchema);

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const ghiChuSchema = new mongoose.Schema(
   {
@@ -27,5 +28,7 @@ const ghiChuSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+ghiChuSchema.plugin(tenantPlugin);
 
 module.exports = mongoose.model("GhiChu", ghiChuSchema);

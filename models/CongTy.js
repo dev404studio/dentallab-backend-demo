@@ -1,42 +1,45 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const congTySchema = new mongoose.Schema(
   {
-    Ten: { 
-      type: String, 
+    Ten: {
+      type: String,
       required: true,
       default: "CÔNG TY TNHH TÂN DENTAL"
     },
-    GioiThieu: { 
-      type: String, 
-      default: "" 
+    GioiThieu: {
+      type: String,
+      default: ""
     },
-    Website: { 
-      type: String, 
-      default: "" 
+    Website: {
+      type: String,
+      default: ""
     },
-    Email: { 
-      type: String, 
-      default: "" 
+    Email: {
+      type: String,
+      default: ""
     },
-    DienThoai: { 
-      type: String, 
-      default: "" 
+    DienThoai: {
+      type: String,
+      default: ""
     },
-    DiaChi: { 
-      type: String, 
-      default: "" 
+    DiaChi: {
+      type: String,
+      default: ""
     },
-    Avatar: { 
-      type: String, 
-      default: "" 
+    Avatar: {
+      type: String,
+      default: ""
     },
-    isActive: { 
-      type: Boolean, 
-      default: true 
+    isActive: {
+      type: Boolean,
+      default: true
     },
   },
   { timestamps: true }
 );
+
+congTySchema.plugin(tenantPlugin);
 
 module.exports = mongoose.model("CongTy", congTySchema, "congtys");

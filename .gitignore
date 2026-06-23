@@ -32,3 +32,5 @@ coverage
 # ENV
 .env
 .env.*
+
+seedSuperAdmin.js

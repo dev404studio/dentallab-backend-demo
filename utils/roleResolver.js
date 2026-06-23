@@ -1,4 +1,5 @@
 const APP_ROLES = {
+  SUPER_ADMIN: "super-admin", // Quản trị hệ thống (không thuộc tenant nào)
   ADMIN: "admin",
   KE_TOAN: "ke-toan",
   NHAN_VIEN: "nhan-vien",
@@ -24,6 +25,8 @@ const resolveRoleFromQuyenSuDungTen = (tenQuyenSuDung = "") => {
 };
 
 const resolveAppRoleFromStaff = (staff = {}) => {
+  if (staff?.isSuperAdmin === true) return APP_ROLES.SUPER_ADMIN;
+
   const roleByQuyen = resolveRoleFromQuyenSuDungTen(staff?.quyenSuDung?.ten);
   if (roleByQuyen) return roleByQuyen;
 

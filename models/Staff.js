@@ -3,12 +3,25 @@ const bcrypt = require("bcrypt");
 
 const staffSchema = new mongoose.Schema(
   {
-    MSNV: { type: String, unique: true, sparse: true, index: true },
+    // tenantId: null → Super Admin (không thuộc tenant nào)
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      default: null,
+      index: true,
+    },
+    // Đánh dấu tài khoản quản trị hệ thống (Super Admin)
+    isSuperAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    // MSNV unique trong từng tenant (không còn global unique)
+    MSNV: { type: String, sparse: true, index: true },
     HoTenNV: { type: String, required: true },
-    Email: { 
-      type: String, 
-      required: true, 
-      unique: true,
+    Email: {
+      type: String,
+      required: true,
+      unique: true, // Email vẫn là unique toàn cục để đăng nhập
       lowercase: true,
       match: [/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, "Email không hợp lệ"]
     },
@@ -25,6 +38,9 @@ const staffSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Index hợp lệ: MSNV unique trong từng tenant
+staffSchema.index({ tenantId: 1, MSNV: 1 }, { unique: true, sparse: true });
 
 // // 🔐 Hash password trước khi lưu
 staffSchema.pre("save", async function () {

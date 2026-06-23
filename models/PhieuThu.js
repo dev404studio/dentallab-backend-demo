@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
+const tenantPlugin = require("../utils/tenantPlugin");
 
 const phieuThuSchema = new mongoose.Schema(
   {
     soPhieuThu: {
       type: String,
-      unique: true,
+      // Bỏ unique toàn cục, dùng compound per-tenant
       index: true,
     },
 
@@ -93,5 +94,9 @@ phieuThuSchema.pre("save", async function (next) {
 
   this.soPhieuThu = `${prefix}${String(nextNumber).padStart(4, "0")}`;
 });
+
+phieuThuSchema.plugin(tenantPlugin);
+// Số phiếu thu unique trong từng tenant
+phieuThuSchema.index({ tenantId: 1, soPhieuThu: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model("PhieuThu", phieuThuSchema);
